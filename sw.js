@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flowview-offline-v1';
+const CACHE_NAME = 'flowview-hopper-offline-v2';
 const ASSETS = [
   './',
   './index.html',
