@@ -1,7 +1,7 @@
 {
   "name": "Flowview – Atelier & Habits",
   "short_name": "Flowview",
-  "description": "Contemplative Habit Tracker & Architectural Window",
+  "description": "Contemplative Habit Tracker & Living Architectural Window",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
