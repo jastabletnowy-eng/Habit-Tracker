@@ -1,13 +1,13 @@
 {
-  "name": "Flowview - Dailies & To-Dos",
+  "name": "Flowview – Atelier & Habits",
   "short_name": "Flowview",
-  "description": "Minimalist Habit Tracker & To-Do System",
+  "description": "Contemplative Habit Tracker & Architectural Window",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0B0E14",
-  "theme_color": "#0B0E14",
+  "background_color": "#14110F",
+  "theme_color": "#14110F",
   "icons": [
     {
       "src": "./icon.png",
