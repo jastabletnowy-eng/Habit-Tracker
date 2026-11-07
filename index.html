@@ -686,6 +686,7 @@
         <div id="vibeSwitch" class="switch on"></div>
       </div>
       <div class="list-group" style="margin-top:12px">
+        <div class="task-card" onclick="forceReloadCache()"><span class="task-title" style="font-size:13px;color:var(--gold)">App-Cache leeren & Bilder neu laden</span><span class="credit-badge pos">Fix</span></div>
         <div class="task-card" onclick="simulatePenaltyTest()"><span class="task-title" style="font-size:13px">Login-Punkteabzug testen</span><span class="credit-badge neg">Demo</span></div>
         <div class="task-card" onclick="addDemoCredits()"><span class="task-title" style="font-size:13px">+2.500 Atelier-Punkte</span><span class="credit-badge pos">+2.500</span></div>
         <div class="task-card" onclick="resetAllData()"><span class="task-title" style="font-size:13px;color:var(--danger)">Alle Daten zurücksetzen</span></div>
@@ -1033,15 +1034,15 @@
         <!-- 📍 HIER WERDEN DEINE EIGENEN BILDER GELADEN (Große Ansicht) 📍 -->
         
         <!-- 1. Hintergrund / Aussicht (.jpg) -->
-        <image href="assets/views/${eq.view}.jpg" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" />
+        <image href="assets/views/${eq.view}.jpg?v=5" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" />
         
         ${outdoorTreesSvg}
         
         <!-- 2. Die Wand (.jpg) - Die Maske schneidet automatisch das richtige Loch in die Wand -->
-        <image href="assets/walls/${eq.wall}.jpg" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" mask="url(#wallMask_${uid})" />
+        <image href="assets/walls/${eq.wall}.jpg?v=5" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" mask="url(#wallMask_${uid})" />
         
         <!-- 3. Der Fensterrahmen (.png) - Freigestellt, legt sich über das Loch und die Wand -->
-        <image href="assets/frames/${eq.frame}.png" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" />
+        <image href="assets/frames/${eq.frame}.png?v=5" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" />
         
         <!-- 📍 ENDE DER BILD-REFERENZEN 📍 -->
         
@@ -1056,19 +1057,19 @@
         return `<svg viewBox="0 0 80 65" width="100%" height="100%">
           <rect width="80" height="65" fill="#241B18"/>
           <!-- 📍 HIER: Mini-Vorschau Fensterrahmen (.png) -->
-          <image href="assets/frames/${item.id}.png" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
+          <image href="assets/frames/${item.id}.png?v=5" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
         </svg>`;
       }
       if (catKey === 'wall') {
         return `<svg viewBox="0 0 80 65" width="100%" height="100%">
           <!-- 📍 HIER: Mini-Vorschau Wand (.jpg) -->
-          <image href="assets/walls/${item.id}.jpg" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
+          <image href="assets/walls/${item.id}.jpg?v=5" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
         </svg>`;
       }
       if (catKey === 'view') {
         return `<svg viewBox="0 0 80 65" width="100%" height="100%">
           <!-- 📍 HIER: Mini-Vorschau Aussicht (.jpg) -->
-          <image href="assets/views/${item.id}.jpg" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
+          <image href="assets/views/${item.id}.jpg?v=5" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
         </svg>`;
       }
       if (catKey === 'light') {
@@ -1885,10 +1886,28 @@
       saveState();
     }
 
+    async function forceReloadCache() {
+      showToast('Leere Cache & lade neu...');
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let reg of registrations) {
+          await reg.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (let key of keys) {
+          await caches.delete(key);
+        }
+      }
+      setTimeout(() => {
+        window.location.href = window.location.pathname + '?v=' + Date.now();
+      }, 400);
+    }
+
     function resetAllData() {
-      if (!confirm('Alle Daten zurücksetzen?')) return;
       localStorage.removeItem('flowview_hopper_v4');
-      location.reload();
+      forceReloadCache();
     }
 
     function renderAll() {
@@ -1908,8 +1927,14 @@
       document.getElementById('splashScreen').classList.add('hidden');
     }, 1300);
 
+    // Beim Prototypen-Testen löschen wir alte Service-Worker automatisch, damit Änderungen auf GitHub sofort sichtbar sind:
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.unregister());
+      });
+      if ('caches' in window) {
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+      }
     }
   </script>
 </body>
