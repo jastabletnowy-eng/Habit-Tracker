@@ -282,6 +282,15 @@
       color: #F2E8DC; padding: 5px 11px; border-radius: 99px;
       font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
     }
+    .calib-panel {
+      pointer-events: auto; background: rgba(20, 17, 15, 0.9);
+      backdrop-filter: blur(14px); border: 1px solid var(--gold);
+      border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; width: 100%;
+      display: none; flex-direction: column; gap: 8px;
+    }
+    .calib-panel.open { display: flex; }
+    .calib-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text); gap: 10px; }
+    .calib-row input[type="range"] { flex: 1; accent-color: var(--gold); }
     .app-shell.zen-mode #screen-dailies > *:not(.window-spacer) { opacity: 0; pointer-events: none; transform: translateY(30px); transition: all 0.5s ease; }
 
     /* Task Cards */
@@ -437,7 +446,7 @@
 
     <!-- VOLLFLÄCHIGER ANIMIERTER HINTERGRUND -->
     <div id="fullSceneBg" class="full-scene-bg">
-      <svg id="bgWindowSvg" class="full-scene-svg" viewBox="0 0 420 860" preserveAspectRatio="xMidYMid slice"></svg>
+      <svg id="bgWindowSvg" class="full-scene-svg" viewBox="0 0 420 750" preserveAspectRatio="xMidYMid slice"></svg>
     </div>
 
     <!-- FEIER-IMPULS AM FENSTER -->
@@ -465,9 +474,37 @@
     <!-- 1. DAILIES -->
     <div id="screen-dailies" class="screen active">
       <div class="window-spacer">
-        <div class="zen-view-pill" onclick="toggleZenMode()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span id="zenModeLabel">Raum betrachten</span>
+        <div id="calibPanel" class="calib-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+            <span style="font-size:11px;font-weight:700;color:var(--gold)">Bild-Skalierung & Position</span>
+            <span style="font-size:10px;color:var(--muted);cursor:pointer" onclick="resetSceneCalib()">Standard</span>
+          </div>
+          <div class="calib-row">
+            <span style="width:95px">Fenster-Größe</span>
+            <input id="calWinScale" type="range" min="0.50" max="1.05" step="0.01" oninput="updateSceneCalib()" />
+          </div>
+          <div class="calib-row">
+            <span style="width:95px">Fenster-Höhe</span>
+            <input id="calWinY" type="range" min="-120" max="120" step="2" oninput="updateSceneCalib()" />
+          </div>
+          <div class="calib-row">
+            <span style="width:95px">Aussicht-Zoom</span>
+            <input id="calViewScale" type="range" min="0.60" max="1.80" step="0.02" oninput="updateSceneCalib()" />
+          </div>
+          <div class="calib-row">
+            <span style="width:95px">Aussicht-Höhe</span>
+            <input id="calViewY" type="range" min="-120" max="120" step="2" oninput="updateSceneCalib()" />
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <div class="zen-view-pill" onclick="toggleCalibPanel()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            <span>Anpassen</span>
+          </div>
+          <div class="zen-view-pill" onclick="toggleZenMode()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span id="zenModeLabel">Raum betrachten</span>
+          </div>
         </div>
       </div>
 
@@ -832,11 +869,18 @@
         frame: 'arch_deep', wall: 'Red', view: 'Sea',
         light: 'hard_sun', plants: 'none', animal: 'none',
         decor: 'wooden_chair', character: 'none'
+      },
+      sceneCalib: {
+        winScale: 0.74,
+        winY: -36,
+        viewScale: 1.0,
+        viewY: 0
       }
     };
 
     let state = Object.assign({}, defaultState, JSON.parse(localStorage.getItem('flowview_hopper_v4')) || {});
     state.equipped = Object.assign({}, defaultState.equipped, state.equipped || {});
+    state.sceneCalib = Object.assign({}, defaultState.sceneCalib, state.sceneCalib || {});
 
     let currentTab = 'dailies';
     let currentShopCat = 'frame';
@@ -884,37 +928,89 @@
       document.getElementById('zenModeLabel').textContent = isZenMode ? 'Aufgaben einblenden' : 'Raum betrachten';
     }
 
+    function toggleCalibPanel() {
+      haptic();
+      const panel = document.getElementById('calibPanel');
+      panel.classList.toggle('open');
+      if (panel.classList.contains('open')) {
+        const c = state.sceneCalib || defaultState.sceneCalib;
+        document.getElementById('calWinScale').value = c.winScale;
+        document.getElementById('calWinY').value = c.winY;
+        document.getElementById('calViewScale').value = c.viewScale;
+        document.getElementById('calViewY').value = c.viewY;
+      }
+    }
+
+    function updateSceneCalib() {
+      state.sceneCalib = {
+        winScale: parseFloat(document.getElementById('calWinScale').value),
+        winY: parseFloat(document.getElementById('calWinY').value),
+        viewScale: parseFloat(document.getElementById('calViewScale').value),
+        viewY: parseFloat(document.getElementById('calViewY').value)
+      };
+      renderWindowScenes();
+      saveState();
+    }
+
+    function resetSceneCalib() {
+      haptic();
+      state.sceneCalib = Object.assign({}, defaultState.sceneCalib);
+      document.getElementById('calWinScale').value = state.sceneCalib.winScale;
+      document.getElementById('calWinY').value = state.sceneCalib.winY;
+      document.getElementById('calViewScale').value = state.sceneCalib.viewScale;
+      document.getElementById('calViewY').value = state.sceneCalib.viewY;
+      renderWindowScenes();
+      saveState();
+    }
+
     function buildWindowSceneSVG(customConfig = null, uid = 'main') {
       const eq = Object.assign({}, state.equipped, customConfig || {});
+      const cal = state.sceneCalib || defaultState.sceneCalib;
 
-      let clipShape = `<path d="M115,340 L115,145 A95,95 0 0,1 305,145 L305,340 Z" />`;
+      // Passepartout-Schnittpfad verläuft exakt mittig im massiven Rahmen von arch_deep.png (420x750 Raumkoordinaten),
+      // sodass die Aussicht (Sea.jpg) niemals über den Rahmen hinausragt und keine Wand im Fenster zu sehen ist.
+      let apertureClipShape = `<path d="M 88,572 L 88,255 A 122,122 0 0,1 332,255 L 332,572 Z" />`;
+      let viewBoxRect = { x: 114, y: 192, w: 192, h: 356 };
+
       if (eq.frame === 'rect_cutout' || eq.frame === 'french_doors' || eq.frame === 'vintage_wood') {
-        clipShape = `<rect x="120" y="70" width="180" height="265" />`;
+        apertureClipShape = `<rect x="92" y="135" width="236" height="430" />`;
+        viewBoxRect = { x: 105, y: 150, w: 210, h: 400 };
       } else if (eq.frame === 'diner_panorama' || eq.frame === 'bauhaus_steel' || eq.frame === 'industrial_loft') {
-        clipShape = `<rect x="45" y="80" width="330" height="240" />`;
+        apertureClipShape = `<rect x="65" y="145" width="290" height="390" />`;
+        viewBoxRect = { x: 75, y: 160, w: 270, h: 365 };
       } else if (eq.frame === 'balcony_ledge') {
-        clipShape = `<polygon points="0,0 420,0 420,520 165,520 165,280 0,215" />`;
+        apertureClipShape = `<polygon points="0,0 420,0 420,520 165,520 165,280 0,215" />`;
+        viewBoxRect = { x: 0, y: 0, w: 420, h: 520 };
       } else if (eq.frame === 'shoji_doors') {
-        clipShape = `<rect x="75" y="65" width="270" height="275" />`;
+        apertureClipShape = `<rect x="78" y="135" width="264" height="425" />`;
+        viewBoxRect = { x: 90, y: 150, w: 240, h: 395 };
       }
 
-      // Die SVG-Maske: Die Wand (Weiß) ist sichtbar, das Loch (Schwarz) ist transparent
-      let maskDef = `
-        <mask id="wallMask_${uid}">
-          <rect width="100%" height="100%" fill="white" />
-          <g fill="black">
-            ${clipShape}
-          </g>
-        </mask>
+      // Berechnung der Aussichts-Skalierung (damit das gesamte Hintergrundbild in den Fensterrahmen passt)
+      const vw = viewBoxRect.w * cal.viewScale;
+      const vh = viewBoxRect.h * cal.viewScale;
+      const vx = viewBoxRect.x + (viewBoxRect.w - vw) / 2;
+      const vy = viewBoxRect.y + (viewBoxRect.h - vh) / 2 + cal.viewY;
+
+      // Gesamt-Transformation der Fenstergruppe (Rahmen + eingepasste Aussicht bewegen/skalieren immer synchron!)
+      const winTransform = `translate(210, ${345 + cal.winY}) scale(${cal.winScale}) translate(-210, -345)`;
+      // Transformation für Deko/Pflanzen auf dem Fensterbrett (synchron zur Fensterbrett-Kante)
+      const sillOffsetY = 82 + cal.winY + (cal.winScale - 0.74) * 210;
+      const sillTransform = `translate(0, ${sillOffsetY})`;
+
+      let clipDef = `
+        <clipPath id="apertureClip_${uid}">
+          ${apertureClipShape}
+        </clipPath>
       `;
 
       let outdoorTreesSvg = '';
       if (eq.plants === 'spherical_trees') {
         outdoorTreesSvg = `
-          <g class="idle-sway">
-            <path d="M165,340 Q162,245 168,185" stroke="#2B211B" stroke-width="5.5" fill="none"/>
-            <ellipse cx="168" cy="175" rx="46" ry="35" fill="#23382A"/>
-            <ellipse cx="156" cy="168" rx="34" ry="25" fill="#36523E"/>
+          <g class="idle-sway" transform="translate(0, 185)">
+            <path d="M175,360 Q172,265 178,205" stroke="#2B211B" stroke-width="5.5" fill="none"/>
+            <ellipse cx="178" cy="195" rx="46" ry="35" fill="#23382A"/>
+            <ellipse cx="166" cy="188" rx="34" ry="25" fill="#36523E"/>
           </g>
         `;
       }
@@ -923,64 +1019,64 @@
       if (eq.plants === 'lush_monstera') {
         plantsSvg = `
           <g class="idle-sway" fill="#264733">
-            <path d="M125,335 C110,270 140,215 182,205 C172,250 160,290 140,335 Z"/>
-            <circle cx="150" cy="302" r="29" fill="#365E44"/>
+            <path d="M145,335 C130,270 155,220 192,210 C182,255 172,290 158,335 Z"/>
+            <circle cx="165" cy="302" r="26" fill="#365E44"/>
           </g>
           <g class="idle-sway-slow" fill="#1C3626">
-            <path d="M290,335 C315,265 280,210 232,195 C248,250 262,290 278,335 Z"/>
-            <circle cx="262" cy="298" r="33" fill="#2D523A"/>
+            <path d="M275,335 C295,265 268,215 228,200 C242,250 252,290 265,335 Z"/>
+            <circle cx="252" cy="298" r="28" fill="#2D523A"/>
           </g>
         `;
       } else if (eq.plants === 'hanging_pothos') {
         plantsSvg = `<g class="idle-sway-top" fill="#385E44"><path d="M92,0 Q98,80 88,165" stroke="#26422F" stroke-width="2.5" fill="none"/><ellipse cx="90" cy="48" rx="10" ry="14"/><ellipse cx="98" cy="90" rx="9" ry="13" fill="#4D7A5B"/><ellipse cx="86" cy="132" rx="8" ry="12"/></g><g class="idle-sway-top" fill="#385E44" style="animation-delay:1.5s"><path d="M325,0 Q316,95 330,180" stroke="#26422F" stroke-width="2.5" fill="none"/><ellipse cx="322" cy="58" rx="11" ry="15"/><ellipse cx="330" cy="110" rx="9" ry="13" fill="#4D7A5B"/></g>`;
       } else if (eq.plants === 'bonsai_pot') {
-        plantsSvg = `<rect x="245" y="317" width="40" height="17" rx="4" fill="#2A3B47"/><g class="idle-sway"><path d="M265,317 C260,295 276,285 258,268" stroke="#4A2F21" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="252" cy="266" rx="23" ry="11" fill="#2D4F38"/><ellipse cx="275" cy="278" rx="17" ry="8" fill="#3B6348"/></g>`;
+        plantsSvg = `<rect x="235" y="317" width="40" height="17" rx="4" fill="#2A3B47"/><g class="idle-sway"><path d="M255,317 C250,295 266,285 248,268" stroke="#4A2F21" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="242" cy="266" rx="23" ry="11" fill="#2D4F38"/><ellipse cx="265" cy="278" rx="17" ry="8" fill="#3B6348"/></g>`;
       } else if (eq.plants === 'dried_eucalyptus') {
-        plantsSvg = `<path d="M140,304 L150,335 L130,335 Z" fill="#1F2933"/><g class="idle-sway"><path d="M140,304 Q126,268 122,240 M140,304 Q150,262 158,236" stroke="#7D7461" stroke-width="2" fill="none"/><circle cx="122" cy="240" r="5.5" fill="#9E8B6E"/><circle cx="158" cy="236" r="6.5" fill="#8C7A5B"/></g>`;
+        plantsSvg = `<path d="M155,304 L165,335 L145,335 Z" fill="#1F2933"/><g class="idle-sway"><path d="M155,304 Q141,268 137,240 M155,304 Q165,262 173,236" stroke="#7D7461" stroke-width="2" fill="none"/><circle cx="137" cy="240" r="5.5" fill="#9E8B6E"/><circle cx="173" cy="236" r="6.5" fill="#8C7A5B"/></g>`;
       } else if (eq.plants === 'fig_tree') {
-        plantsSvg = `<rect x="330" y="345" width="44" height="46" rx="5" fill="#A84A32"/><g class="idle-sway"><path d="M352,345 Q345,255 356,182" stroke="#4A3222" stroke-width="6" fill="none"/><ellipse cx="336" cy="220" rx="25" ry="14" fill="#23422E"/><ellipse cx="368" cy="195" rx="27" ry="15" fill="#31573E"/><ellipse cx="345" cy="164" rx="23" ry="13" fill="#23422E"/></g>`;
+        plantsSvg = `<rect x="340" y="345" width="44" height="46" rx="5" fill="#A84A32"/><g class="idle-sway"><path d="M362,345 Q355,255 366,182" stroke="#4A3222" stroke-width="6" fill="none"/><ellipse cx="346" cy="220" rx="25" ry="14" fill="#23422E"/><ellipse cx="378" cy="195" rx="27" ry="15" fill="#31573E"/><ellipse cx="355" cy="164" rx="23" ry="13" fill="#23422E"/></g>`;
       } else if (eq.plants === 'sill_cacti') {
-        plantsSvg = `<polygon points="135,314 157,314 153,335 139,335" fill="#C85A32"/><rect class="idle-sway" x="141" y="282" width="10" height="32" rx="5" fill="#3B6345"/><polygon points="168,319 186,319 183,335 171,335" fill="#B84A27"/><circle cx="177" cy="310" r="9.5" fill="#497554"/>`;
+        plantsSvg = `<polygon points="150,314 172,314 168,335 154,335" fill="#C85A32"/><rect class="idle-sway" x="156" y="282" width="10" height="32" rx="5" fill="#3B6345"/><polygon points="183,319 201,319 198,335 186,335" fill="#B84A27"/><circle cx="192" cy="310" r="9.5" fill="#497554"/>`;
       }
 
       let decorSvg = '';
       if (eq.decor === 'wooden_chair') {
-        decorSvg = `<g stroke="#24140E" stroke-width="4" fill="none"><line x1="42" y1="305" x2="42" y2="410"/><line x1="90" y1="358" x2="90" y2="410"/><line x1="52" y1="305" x2="52" y2="358" stroke-width="2"/><line x1="62" y1="305" x2="62" y2="358" stroke-width="2"/><line x1="72" y1="305" x2="72" y2="358" stroke-width="2"/><line x1="38" y1="305" x2="80" y2="305" stroke-width="5"/><polygon points="38,358 96,358 90,365 38,365" fill="#3B2219" stroke="none"/></g>`;
+        decorSvg = `<g transform="translate(-18, 25)" stroke="#24140E" stroke-width="4" fill="none"><line x1="42" y1="305" x2="42" y2="410"/><line x1="90" y1="358" x2="90" y2="410"/><line x1="52" y1="305" x2="52" y2="358" stroke-width="2"/><line x1="62" y1="305" x2="62" y2="358" stroke-width="2"/><line x1="72" y1="305" x2="72" y2="358" stroke-width="2"/><line x1="38" y1="305" x2="80" y2="305" stroke-width="5"/><polygon points="38,358 96,358 90,365 38,365" fill="#3B2219" stroke="none"/></g>`;
       } else if (eq.decor === 'vinyl_lamp_cocktail') {
         decorSvg = `<rect x="25" y="355" width="155" height="90" rx="8" fill="#6E2B1C"/><path d="M78,278 A39,33 0 0,1 156,278 Z" fill="#B58938"/><rect x="113" y="278" width="8" height="77" fill="#D4AF37"/><g class="idle-vinyl"><ellipse cx="108" cy="378" rx="42" ry="13" fill="#121212"/><ellipse cx="108" cy="378" rx="13" ry="4.5" fill="#C83E2B"/><line x1="75" y1="378" x2="141" y2="378" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/></g><polygon points="52,320 82,320 67,336" fill="#E8B84B" opacity="0.9"/><line x1="67" y1="336" x2="67" y2="356" stroke="#F4ECE1" stroke-width="2"/><ellipse cx="67" cy="356" rx="10" ry="3" fill="#F4ECE1"/>`;
       } else if (eq.decor === 'diner_set') {
-        decorSvg = `<rect x="130" y="314" width="19" height="19" rx="3" fill="#F2E8DC"/><path d="M149,318 H154 V327 H149" fill="none" stroke="#F2E8DC" stroke-width="2.5"/><path class="idle-steam" d="M137,308 Q134,296 141,286" stroke="#F2E8DC" stroke-width="1.6" fill="none"/><rect x="164" y="307" width="17" height="26" rx="2" fill="#B0B8BF"/>`;
+        decorSvg = `<rect x="148" y="314" width="19" height="19" rx="3" fill="#F2E8DC"/><path d="M167,318 H172 V327 H167" fill="none" stroke="#F2E8DC" stroke-width="2.5"/><path class="idle-steam" d="M155,308 Q152,296 159,286" stroke="#F2E8DC" stroke-width="1.6" fill="none"/><rect x="182" y="307" width="17" height="26" rx="2" fill="#B0B8BF"/>`;
       } else if (eq.decor === 'noir_coffee') {
-        decorSvg = `<rect x="140" y="316" width="21" height="17" rx="3" fill="#1F1D1B"/><path class="idle-steam" d="M147,310 Q142,296 150,285" stroke="#E6DCD2" stroke-width="1.8" fill="none"/><path class="idle-steam-2" d="M155,312 Q160,298 152,287" stroke="#E6DCD2" stroke-width="1.5" fill="none"/><ellipse cx="182" cy="329" rx="12" ry="4" fill="#4A4542"/>`;
+        decorSvg = `<rect x="155" y="316" width="21" height="17" rx="3" fill="#1F1D1B"/><path class="idle-steam" d="M162,310 Q157,296 165,285" stroke="#E6DCD2" stroke-width="1.8" fill="none"/><path class="idle-steam-2" d="M170,312 Q175,298 167,287" stroke="#E6DCD2" stroke-width="1.5" fill="none"/><ellipse cx="197" cy="329" rx="12" ry="4" fill="#4A4542"/>`;
       } else if (eq.decor === 'typewriter') {
-        decorSvg = `<rect x="150" y="308" width="48" height="25" rx="4" fill="#23272A"/><rect class="idle-breathe" x="159" y="290" width="30" height="19" fill="#F4ECE1"/><line x1="145" y1="308" x2="203" y2="308" stroke="#9E9083" stroke-width="3"/>`;
+        decorSvg = `<rect x="165" y="308" width="48" height="25" rx="4" fill="#23272A"/><rect class="idle-breathe" x="174" y="290" width="30" height="19" fill="#F4ECE1"/><line x1="160" y1="308" x2="218" y2="308" stroke="#9E9083" stroke-width="3"/>`;
       } else if (eq.decor === 'open_book') {
-        decorSvg = `<polygon points="140,331 172,325 172,335 140,339" fill="#F4ECE1"/><polygon points="172,325 204,331 204,339 172,335" fill="#E2D5C6"/><path d="M172,329 Q175,344 182,350" stroke="#C83E2B" stroke-width="2.5" fill="none"/>`;
+        decorSvg = `<polygon points="155,331 187,325 187,335 155,339" fill="#F4ECE1"/><polygon points="187,325 219,331 219,339 187,335" fill="#E2D5C6"/><path d="M187,329 Q190,344 197,350" stroke="#C83E2B" stroke-width="2.5" fill="none"/>`;
       } else if (eq.decor === 'retro_radio') {
-        decorSvg = `<rect x="235" y="304" width="46" height="29" rx="5" fill="#5C3317"/><rect class="idle-neon" x="242" y="311" width="19" height="13" rx="2" fill="#E8B84B"/><circle cx="271" cy="317" r="4.5" fill="#2B180A"/>`;
+        decorSvg = `<rect x="225" y="304" width="46" height="29" rx="5" fill="#5C3317"/><rect class="idle-neon" x="232" y="311" width="19" height="13" rx="2" fill="#E8B84B"/><circle cx="261" cy="317" r="4.5" fill="#2B180A"/>`;
       } else if (eq.decor === 'velvet_curtains') {
-        decorSvg = `<path class="idle-sway-top" d="M40,55 Q98,185 68,365 L35,365 L35,55 Z" fill="#6E1414"/><path class="idle-sway-top" style="animation-delay:1.8s" d="M380,55 Q322,185 352,365 L385,365 L385,55 Z" fill="#520E0E"/>`;
+        decorSvg = `<path class="idle-sway-top" d="M75,-20 Q125,140 95,355 L65,355 L65,-20 Z" fill="#6E1414"/><path class="idle-sway-top" style="animation-delay:1.8s" d="M345,-20 Q295,140 325,355 L355,355 L355,-20 Z" fill="#520E0E"/>`;
       }
 
       let charSvg = '';
       if (eq.character === 'window_sitter') {
-        charSvg = `<g class="idle-breathe"><circle cx="245" cy="246" r="12.5" fill="#261712"/><path d="M230,260 Q255,260 262,304 L222,304 Z" fill="#2B2623"/><path d="M222,301 L205,348 L218,352 L236,307 Z" fill="#F2EAE1"/><path d="M236,304 L228,358 L241,360 L250,307 Z" fill="#E2D6C8"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="235" cy="246" r="12.5" fill="#261712"/><path d="M220,260 Q245,260 252,304 L212,304 Z" fill="#2B2623"/><path d="M212,301 L195,348 L208,352 L226,307 Z" fill="#F2EAE1"/><path d="M226,304 L218,358 L231,360 L240,307 Z" fill="#E2D6C8"/></g>`;
       } else if (eq.character === 'ledge_sitter') {
         charSvg = `<g class="idle-breathe"><circle cx="188" cy="222" r="12.5" fill="#6E3B26"/><path d="M168,235 Q192,237 205,286 L165,280 Z" fill="#14181C"/><rect x="192" y="283" width="10" height="28" fill="#14181C"/><rect x="194" y="311" width="8" height="10" fill="#C83E2B"/></g>`;
       } else if (eq.character === 'bar_guests') {
-        charSvg = `<g class="idle-breathe"><circle cx="182" cy="202" r="10.5" fill="#14110F"/><path d="M166,215 L195,215 L189,274 L161,274 Z" fill="#14110F"/><circle cx="265" cy="192" r="10.5" fill="#F2DEC4"/><path d="M252,205 L280,205 L276,264 L248,264 Z" fill="#1E1916"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="182" cy="202" r="10.5" fill="#14110F"/><path d="M166,215 L195,215 L189,274 L161,274 Z" fill="#14110F"/><circle cx="255" cy="192" r="10.5" fill="#F2DEC4"/><path d="M242,205 L270,205 L266,264 L238,264 Z" fill="#1E1916"/></g>`;
       } else if (eq.character === 'diner_patrons') {
-        charSvg = `<g class="idle-breathe"><circle cx="142" cy="242" r="10.5" fill="#121314"/><path d="M125,255 L157,255 L161,304 L122,304 Z" fill="#121314"/><circle cx="195" cy="239" r="11.5" fill="#121314"/><path d="M180,252 L212,252 L215,304 L178,304 Z" fill="#121314"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="162" cy="242" r="10.5" fill="#121314"/><path d="M145,255 L177,255 L181,304 L142,304 Z" fill="#121314"/><circle cx="215" cy="239" r="11.5" fill="#121314"/><path d="M200,252 L232,252 L235,304 L198,304 Z" fill="#121314"/></g>`;
       } else if (eq.character === 'window_smoker') {
-        charSvg = `<g class="idle-breathe"><circle cx="152" cy="195" r="13" fill="#14110F"/><path d="M132,212 L172,212 L167,335 L129,335 Z" fill="#14110F"/><circle class="idle-neon" cx="175" cy="203" r="2.2" fill="#FF6B35"/><path class="idle-steam" d="M177,199 Q185,180 179,164" stroke="#D8D8D8" stroke-width="1.6" fill="none"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="168" cy="195" r="13" fill="#14110F"/><path d="M148,212 L188,212 L183,335 L145,335 Z" fill="#14110F"/><circle class="idle-neon" cx="191" cy="203" r="2.2" fill="#FF6B35"/><path class="idle-steam" d="M193,199 Q201,180 195,164" stroke="#D8D8D8" stroke-width="1.6" fill="none"/></g>`;
       } else if (eq.character === 'back_reader') {
         charSvg = `<g class="idle-breathe"><circle cx="210" cy="250" r="14" fill="#1C1613"/><path d="M180,270 Q210,264 240,270 L248,335 L172,335 Z" fill="#2A211D"/></g>`;
       } else if (eq.character === 'rain_trenchcoat') {
         charSvg = `<g class="idle-breathe"><polygon points="198,202 224,202 231,210 191,210" fill="#12161A"/><path d="M194,212 L227,212 L235,325 L186,325 Z" fill="#1B2228"/></g>`;
       } else if (eq.character === 'sky_gazer') {
-        charSvg = `<g class="idle-breathe"><circle cx="265" cy="222" r="13" fill="#1A1412"/><path d="M248,239 L284,239 L288,335 L244,335 Z" fill="#261E1B"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="245" cy="222" r="13" fill="#1A1412"/><path d="M228,239 L264,239 L268,335 L224,335 Z" fill="#261E1B"/></g>`;
       } else if (eq.character === 'quiet_couple') {
-        charSvg = `<g class="idle-breathe"><circle cx="158" cy="250" r="11" fill="#171311"/><path d="M142,264 L174,264 L178,335 L138,335 Z" fill="#171311"/><circle cx="262" cy="250" r="11" fill="#171311"/><path d="M246,264 L278,264 L282,335 L242,335 Z" fill="#171311"/><rect x="182" y="304" width="54" height="6" fill="#2B1D16"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="172" cy="250" r="11" fill="#171311"/><path d="M156,264 L188,264 L192,335 L152,335 Z" fill="#171311"/><circle cx="248" cy="250" r="11" fill="#171311"/><path d="M232,264 L264,264 L268,335 L228,335 Z" fill="#171311"/><rect x="188" y="304" width="44" height="6" fill="#2B1D16"/></g>`;
       }
 
       let animalSvg = '';
@@ -998,56 +1094,60 @@
       } else if (eq.animal === 'red_tabby') {
         animalSvg = `<ellipse class="idle-breathe" cx="205" cy="317" rx="14" ry="18" fill="#D96B27"/><circle cx="205" cy="295" r="10.5" fill="#D96B27"/><polygon points="197,289 199,280 204,287" fill="#B85214"/><polygon points="206,287 211,280 213,289" fill="#B85214"/><path class="idle-tail" d="M214,329 Q234,331 238,315" stroke="#D96B27" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
       } else if (eq.animal === 'sleeping_greyhound') {
-        animalSvg = `<ellipse cx="215" cy="408" rx="70" ry="16" fill="#7D3225"/><g class="idle-breathe"><ellipse cx="210" cy="403" rx="38" ry="11.5" fill="#8C7A6B"/><path d="M240,401 L264,405 L245,409 Z" fill="#8C7A6B"/></g>`;
+        animalSvg = `<ellipse cx="215" cy="395" rx="70" ry="16" fill="#7D3225"/><g class="idle-breathe"><ellipse cx="210" cy="390" rx="38" ry="11.5" fill="#8C7A6B"/><path d="M240,388 L264,392 L245,396 Z" fill="#8C7A6B"/></g>`;
       } else if (eq.animal === 'vintage_bird') {
-        animalSvg = `<g class="idle-breathe"><ellipse cx="162" cy="325" rx="8.5" ry="6.5" fill="#E0A94E"/><circle cx="168" cy="321" r="5" fill="#E0A94E"/><polygon points="173,321 178,323 173,324" fill="#D45D3F"/></g>`;
+        animalSvg = `<g class="idle-breathe"><ellipse cx="168" cy="325" rx="8.5" ry="6.5" fill="#E0A94E"/><circle cx="174" cy="321" r="5" fill="#E0A94E"/><polygon points="179,321 184,323 179,324" fill="#D45D3F"/></g>`;
       } else if (eq.animal === 'wall_raven') {
-        animalSvg = `<g class="idle-breathe"><ellipse cx="275" cy="321" rx="10.5" ry="7.5" fill="#121317"/><circle cx="268" cy="314" r="6" fill="#121317"/><polygon points="262,314 254,316 262,318" fill="#2B2D38"/></g>`;
+        animalSvg = `<g class="idle-breathe"><ellipse cx="255" cy="321" rx="10.5" ry="7.5" fill="#121317"/><circle cx="248" cy="314" r="6" fill="#121317"/><polygon points="242,314 234,316 242,318" fill="#2B2D38"/></g>`;
       } else if (eq.animal === 'night_moths') {
-        animalSvg = `<circle cx="210" cy="115" r="8" fill="#FFF3B0"/><circle class="idle-float" cx="210" cy="115" r="24" fill="#FFF3B0" opacity="0.22"/><g class="idle-moth"><path d="M186,108 L193,112 L186,116 Z M234,118 L227,122 L234,126 Z" fill="#F2E8DC"/></g>`;
+        animalSvg = `<circle cx="210" cy="145" r="8" fill="#FFF3B0"/><circle class="idle-float" cx="210" cy="145" r="24" fill="#FFF3B0" opacity="0.22"/><g class="idle-moth"><path d="M186,138 L193,142 L186,146 Z M234,148 L227,152 L234,156 Z" fill="#F2E8DC"/></g>`;
       } else if (eq.animal === 'ceiling_fan') {
-        animalSvg = `<line x1="210" y1="0" x2="210" y2="40" stroke="#1E1916" stroke-width="4"/><g class="idle-fan"><ellipse cx="210" cy="40" rx="72" ry="7" fill="#2B211B"/></g><ellipse cx="210" cy="40" rx="16" ry="5" fill="#14110F"/>`;
+        animalSvg = `<line x1="210" y1="-80" x2="210" y2="-35" stroke="#1E1916" stroke-width="4"/><g class="idle-fan"><ellipse cx="210" cy="-35" rx="72" ry="7" fill="#2B211B"/></g><ellipse cx="210" cy="-35" rx="16" ry="5" fill="#14110F"/>`;
       }
 
       let lightSvg = '';
-      const dustParticles = `<g class="idle-dust" fill="#FFF3D6"><circle cx="155" cy="210" r="1.6" opacity="0.6"/><circle cx="215" cy="255" r="2.1" opacity="0.5"/><circle cx="260" cy="195" r="1.4" opacity="0.7"/><circle cx="185" cy="290" r="1.8" opacity="0.45"/></g><g class="idle-dust-2" fill="#FFE082"><circle cx="135" cy="265" r="1.5" opacity="0.5"/><circle cx="240" cy="235" r="2" opacity="0.65"/><circle cx="285" cy="275" r="1.4" opacity="0.5"/></g>`;
+      const dustParticles = `<g class="idle-dust" fill="#FFF3D6"><circle cx="165" cy="240" r="1.6" opacity="0.6"/><circle cx="215" cy="285" r="2.1" opacity="0.5"/><circle cx="250" cy="225" r="1.4" opacity="0.7"/><circle cx="185" cy="320" r="1.8" opacity="0.45"/></g><g class="idle-dust-2" fill="#FFE082"><circle cx="155" cy="295" r="1.5" opacity="0.5"/><circle cx="235" cy="265" r="2" opacity="0.65"/><circle cx="265" cy="305" r="1.4" opacity="0.5"/></g>`;
 
       if (eq.light === 'hard_sun') {
-        lightSvg = `<polygon points="0,330 420,170 420,860 0,860" fill="#FFE3B8" opacity="0.12"/><polygon points="0,0 420,0 420,170 0,330" fill="#1A110B" opacity="0.45"/>${dustParticles}`;
+        // Da die KI-Bilder bereits den echten Hopper-Lichtwurf enthalten, fügen wir hier nur die sanften Staubpartikel hinzu (ohne den störenden dunklen Balken)
+        lightSvg = `${dustParticles}`;
       } else if (eq.light === 'golden_hour') {
-        lightSvg = `<polygon points="0,330 420,170 420,860 0,860" fill="#FF9E44" opacity="0.28"/><polygon points="0,0 420,0 420,170 0,330" fill="#2B1108" opacity="0.32"/>${dustParticles}`;
+        lightSvg = `<rect width="420" height="750" fill="#FF9E44" opacity="0.16"/>${dustParticles}`;
       } else if (eq.light === 'pale_moon') {
-        lightSvg = `<polygon points="0,330 420,170 420,860 0,860" fill="#C9E2F5" opacity="0.15"/><polygon points="0,0 420,0 420,170 0,330" fill="#0B131A" opacity="0.6"/>`;
+        lightSvg = `<rect width="420" height="750" fill="#0B192C" opacity="0.32"/>`;
       } else if (eq.light === 'warm_night') {
-        lightSvg = `<polygon points="0,330 420,170 420,860 0,860" fill="#FFB74D" opacity="0.18"/><polygon points="0,0 420,0 420,170 0,330" fill="#1A1105" opacity="0.75"/>`;
+        lightSvg = `<rect width="420" height="750" fill="#1A1105" opacity="0.38"/>`;
       } else if (eq.light === 'rain_mood') {
-        lightSvg = `<polygon points="0,330 420,170 420,860 0,860" fill="#5A7B8C" opacity="0.12"/><polygon points="0,0 420,0 420,170 0,330" fill="#0F151A" opacity="0.5"/><g class="idle-rain" fill="#A3C6D9"><rect x="120" y="150" width="1.5" height="18" rx="1"/><rect x="250" y="180" width="1.5" height="15" rx="1"/><rect x="180" y="240" width="1" height="22" rx="0.5"/><rect x="300" y="210" width="1.5" height="14" rx="1"/></g>`;
+        lightSvg = `<rect width="420" height="750" fill="#0F1A24" opacity="0.28"/><g class="idle-rain" fill="#A3C6D9"><rect x="160" y="210" width="1.5" height="18" rx="1"/><rect x="240" y="230" width="1.5" height="15" rx="1"/><rect x="190" y="290" width="1" height="22" rx="0.5"/><rect x="255" y="270" width="1.5" height="14" rx="1"/></g>`;
       } else if (eq.light === 'neon_flicker') {
-        lightSvg = `<polygon class="idle-neon" points="0,330 420,170 420,860 0,860" fill="#FF1E56" opacity="0.25"/><polygon points="0,0 420,0 420,170 0,330" fill="#14050A" opacity="0.8"/>`;
+        lightSvg = `<rect class="idle-neon" width="420" height="750" fill="#FF1E56" opacity="0.18"/>`;
       }
 
-      const bottomVignette = `<linearGradient id="vig_${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#14110F" stop-opacity="0"/><stop offset="48%" stop-color="#14110F" stop-opacity="0.18"/><stop offset="100%" stop-color="#14110F" stop-opacity="0.78"/></linearGradient><rect x="0" y="340" width="420" height="520" fill="url(#vig_${uid})"/>`;
+      const bottomVignette = `<linearGradient id="vig_${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#14110F" stop-opacity="0"/><stop offset="55%" stop-color="#14110F" stop-opacity="0.15"/><stop offset="100%" stop-color="#14110F" stop-opacity="0.72"/></linearGradient><rect x="0" y="420" width="420" height="330" fill="url(#vig_${uid})"/>`;
 
       return `
-        <defs>${maskDef}</defs>
+        <defs>${clipDef}</defs>
         
-        <!-- 📍 HIER WERDEN DEINE EIGENEN BILDER GELADEN (Große Ansicht) 📍 -->
+        <!-- 📍 1. ECHTE WAND (.jpg) - Füllt den gesamten 9:16 Raum im Hintergrund 📍 -->
+        <image href="assets/walls/${eq.wall}.jpg?v=6" x="0" y="0" width="420" height="750" preserveAspectRatio="xMidYMid slice" />
         
-        <!-- 1. Hintergrund / Aussicht (.jpg) -->
-        <image href="assets/views/${eq.view}.jpg?v=5" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" />
+        <!-- 📍 2. SYNCHRONISIERTE FENSTER-GRUPPE (Aussicht + Passepartout-Maske + Rahmen) 📍 -->
+        <g transform="${winTransform}">
+          <!-- Die Aussicht (.jpg) wird passgenau in die Fensteröffnung skaliert und am Innenrand des Rahmens beschnitten -->
+          <g clip-path="url(#apertureClip_${uid})">
+            <image href="assets/views/${eq.view}.jpg?v=6" x="${vx}" y="${vy}" width="${vw}" height="${vh}" preserveAspectRatio="xMidYMid slice" />
+            ${outdoorTreesSvg}
+          </g>
+          
+          <!-- Der freigestellte Fensterrahmen (.png) legt sich nahtlos über die Schnittkante der Aussicht -->
+          <image href="assets/frames/${eq.frame}.png?v=6" x="0" y="0" width="420" height="750" preserveAspectRatio="xMidYMid slice" />
+        </g>
         
-        ${outdoorTreesSvg}
-        
-        <!-- 2. Die Wand (.jpg) - Die Maske schneidet automatisch das richtige Loch in die Wand -->
-        <image href="assets/walls/${eq.wall}.jpg?v=5" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" mask="url(#wallMask_${uid})" />
-        
-        <!-- 3. Der Fensterrahmen (.png) - Freigestellt, legt sich über das Loch und die Wand -->
-        <image href="assets/frames/${eq.frame}.png?v=5" x="0" y="0" width="420" height="860" preserveAspectRatio="xMidYMid slice" />
-        
-        <!-- 📍 ENDE DER BILD-REFERENZEN 📍 -->
-        
-        <!-- 4. Dynamische Layer für Pflanzen, Deko, Tiere, Licht & Schatten -->
-        ${plantsSvg}${decorSvg}${charSvg}${animalSvg}${lightSvg}${bottomVignette}
+        <!-- 📍 3. DYNAMISCHE LAYER FÜR PFLANZEN, DEKO, TIERE & LICHT (synchron zum Fensterbrett) 📍 -->
+        <g transform="${sillTransform}">
+          ${plantsSvg}${decorSvg}${charSvg}${animalSvg}
+        </g>
+        ${lightSvg}${bottomVignette}
       `;
     }
 
@@ -1470,8 +1570,7 @@
       document.getElementById('bgWindowSvg').innerHTML = buildWindowSceneSVG(null, 'bg');
       const isExpanded = document.getElementById('shopStageWrap').classList.contains('expanded');
       const shopSvg = document.getElementById('shopPreviewSvg');
-      // Zooms out to 0 0 420 860 to show full window architecture by default, expands to original full slice size
-      shopSvg.setAttribute('viewBox', '0 0 420 860');
+      shopSvg.setAttribute('viewBox', '0 0 420 750');
       shopSvg.setAttribute('preserveAspectRatio', isExpanded ? 'xMidYMid slice' : 'xMidYMid meet');
       shopSvg.innerHTML = buildWindowSceneSVG(previewOverride, 'shop');
 
