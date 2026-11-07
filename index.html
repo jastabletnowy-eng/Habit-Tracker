@@ -273,20 +273,31 @@
     @keyframes screenIn { to { opacity: 1; transform: translateY(0); } }
 
     .window-spacer {
-      height: 290px; display: flex; flex-direction: column;
-      justify-content: flex-end; align-items: flex-end; padding-bottom: 10px; pointer-events: none;
+      height: 365px; display: flex; flex-direction: column;
+      justify-content: flex-end; align-items: center; padding-bottom: 12px; pointer-events: none;
+      transition: height 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .app-shell.zen-mode .window-spacer {
+      height: calc(100% - 20px);
+      padding-bottom: 8px;
     }
     .zen-view-pill {
-      pointer-events: auto; background: rgba(20, 17, 15, 0.72);
-      backdrop-filter: blur(10px); border: 1px solid rgba(242, 232, 220, 0.18);
-      color: #F2E8DC; padding: 5px 11px; border-radius: 99px;
-      font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      pointer-events: auto; background: rgba(20, 17, 15, 0.78);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(242, 232, 220, 0.18);
+      color: #F2E8DC; padding: 6px 13px; border-radius: 99px;
+      font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
     }
+    .zen-view-pill:active { transform: scale(0.95); }
+    .zen-view-pill.active-pill { border-color: var(--gold); color: var(--gold); }
     .calib-panel {
-      pointer-events: auto; background: rgba(20, 17, 15, 0.9);
-      backdrop-filter: blur(14px); border: 1px solid var(--gold);
+      pointer-events: auto; background: rgba(20, 17, 15, 0.92);
+      backdrop-filter: blur(16px); border: 1px solid var(--gold);
       border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; width: 100%;
       display: none; flex-direction: column; gap: 8px;
+      box-shadow: 0 14px 36px rgba(0,0,0,0.65);
     }
     .calib-panel.open { display: flex; }
     .calib-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text); gap: 10px; }
@@ -334,19 +345,20 @@
 
     /* VISUELLES ATELIER (SHOP) */
     .shop-stage-wrap {
-      position: relative; width: 100%; height: 215px; border-radius: 22px; overflow: hidden;
+      position: relative; width: 100%; height: 250px; border-radius: 22px; overflow: hidden;
       border: 1.5px solid var(--border); box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65); margin-bottom: 12px;
+      background: #14110F;
       transition: height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .shop-stage-wrap.expanded { height: 380px; }
+    .shop-stage-wrap.expanded { height: 430px; }
     .shop-preview-badge {
-      position: absolute; top: 12px; left: 12px; background: rgba(20, 17, 15, 0.82);
+      position: absolute; top: 12px; left: 12px; background: rgba(20, 17, 15, 0.84);
       backdrop-filter: blur(8px); border: 1px solid var(--gold); color: var(--gold); padding: 4px 10px;
       border-radius: 99px; font-size: 10px; font-weight: 700; text-transform: uppercase; display: none; z-index: 5;
     }
     .shop-expand-btn {
-      position: absolute; top: 12px; right: 12px; background: rgba(20, 17, 15, 0.78);
-      backdrop-filter: blur(8px); border: 1px solid var(--border); color: #F2E8DC; padding: 5px 10px;
+      position: absolute; top: 12px; right: 12px; background: rgba(20, 17, 15, 0.82);
+      backdrop-filter: blur(8px); border: 1px solid rgba(242, 232, 220, 0.22); color: #F2E8DC; padding: 6px 12px;
       border-radius: 99px; font-size: 10px; font-weight: 600; cursor: pointer; z-index: 5;
     }
 
@@ -871,16 +883,22 @@
         decor: 'wooden_chair', character: 'none'
       },
       sceneCalib: {
-        winScale: 0.74,
-        winY: -36,
+        winScale: 0.61,
+        winY: -32,
         viewScale: 1.0,
         viewY: 0
       }
     };
 
-    let state = Object.assign({}, defaultState, JSON.parse(localStorage.getItem('flowview_hopper_v4')) || {});
+    const savedRaw = JSON.parse(localStorage.getItem('flowview_hopper_v5') || localStorage.getItem('flowview_hopper_v4') || 'null');
+    let state = Object.assign({}, defaultState, savedRaw || {});
     state.equipped = Object.assign({}, defaultState.equipped, state.equipped || {});
-    state.sceneCalib = Object.assign({}, defaultState.sceneCalib, state.sceneCalib || {});
+    // Falls noch die alte v4-Kalibrierung (0.74) gespeichert war, auf die neue harmonische 0.61 Architektur-Größe aktualisieren
+    if (!localStorage.getItem('flowview_hopper_v5')) {
+      state.sceneCalib = Object.assign({}, defaultState.sceneCalib);
+    } else {
+      state.sceneCalib = Object.assign({}, defaultState.sceneCalib, state.sceneCalib || {});
+    }
 
     let currentTab = 'dailies';
     let currentShopCat = 'frame';
@@ -906,7 +924,7 @@
     let calMonth = new Date().getMonth();
 
     function saveState() {
-      localStorage.setItem('flowview_hopper_v4', JSON.stringify(state));
+      localStorage.setItem('flowview_hopper_v5', JSON.stringify(state));
     }
 
     function haptic(pattern = 14) {
@@ -967,36 +985,39 @@
       const eq = Object.assign({}, state.equipped, customConfig || {});
       const cal = state.sceneCalib || defaultState.sceneCalib;
 
-      // Passepartout-Schnittpfad verläuft exakt mittig im massiven Rahmen von arch_deep.png (420x750 Raumkoordinaten),
-      // sodass die Aussicht (Sea.jpg) niemals über den Rahmen hinausragt und keine Wand im Fenster zu sehen ist.
-      let apertureClipShape = `<path d="M 88,572 L 88,255 A 122,122 0 0,1 332,255 L 332,572 Z" />`;
-      let viewBoxRect = { x: 114, y: 192, w: 192, h: 356 };
+      // Passepartout-Schnittpfad verläuft tief innerhalb des opaken Steinrahmens (bis y=612),
+      // und das Aussichts-Bild reicht bis unter das massive Fensterbrett (y=125 bis y=612),
+      // sodass garantiert 0 Pixel der dahinterliegenden Wand im Fensterrahmen durchblitzen!
+      let apertureClipShape = `<path d="M 80,612 L 80,250 A 130,130 0 0,1 340,250 L 340,612 Z" />`;
+      let viewBoxRect = { x: 86, y: 128, w: 248, h: 482 };
 
       if (eq.frame === 'rect_cutout' || eq.frame === 'french_doors' || eq.frame === 'vintage_wood') {
-        apertureClipShape = `<rect x="92" y="135" width="236" height="430" />`;
-        viewBoxRect = { x: 105, y: 150, w: 210, h: 400 };
+        apertureClipShape = `<rect x="82" y="125" width="256" height="482" />`;
+        viewBoxRect = { x: 86, y: 128, w: 248, h: 480 };
       } else if (eq.frame === 'diner_panorama' || eq.frame === 'bauhaus_steel' || eq.frame === 'industrial_loft') {
-        apertureClipShape = `<rect x="65" y="145" width="290" height="390" />`;
-        viewBoxRect = { x: 75, y: 160, w: 270, h: 365 };
+        apertureClipShape = `<rect x="60" y="135" width="300" height="450" />`;
+        viewBoxRect = { x: 64, y: 138, w: 292, h: 445 };
       } else if (eq.frame === 'balcony_ledge') {
-        apertureClipShape = `<polygon points="0,0 420,0 420,520 165,520 165,280 0,215" />`;
-        viewBoxRect = { x: 0, y: 0, w: 420, h: 520 };
+        apertureClipShape = `<polygon points="0,0 420,0 420,540 165,540 165,280 0,215" />`;
+        viewBoxRect = { x: 0, y: 0, w: 420, h: 540 };
       } else if (eq.frame === 'shoji_doors') {
-        apertureClipShape = `<rect x="78" y="135" width="264" height="425" />`;
-        viewBoxRect = { x: 90, y: 150, w: 240, h: 395 };
+        apertureClipShape = `<rect x="74" y="128" width="272" height="475" />`;
+        viewBoxRect = { x: 78, y: 130, w: 264, h: 470 };
       }
 
-      // Berechnung der Aussichts-Skalierung (damit das gesamte Hintergrundbild in den Fensterrahmen passt)
+      // Berechnung der Aussichts-Skalierung (damit das gesamte Hintergrundbild lückenlos im Rahmen sitzt)
       const vw = viewBoxRect.w * cal.viewScale;
       const vh = viewBoxRect.h * cal.viewScale;
       const vx = viewBoxRect.x + (viewBoxRect.w - vw) / 2;
       const vy = viewBoxRect.y + (viewBoxRect.h - vh) / 2 + cal.viewY;
 
       // Gesamt-Transformation der Fenstergruppe (Rahmen + eingepasste Aussicht bewegen/skalieren immer synchron!)
-      const winTransform = `translate(210, ${345 + cal.winY}) scale(${cal.winScale}) translate(-210, -345)`;
-      // Transformation für Deko/Pflanzen auf dem Fensterbrett (synchron zur Fensterbrett-Kante)
-      const sillOffsetY = 82 + cal.winY + (cal.winScale - 0.74) * 210;
-      const sillTransform = `translate(0, ${sillOffsetY})`;
+      const winTransform = `translate(210, ${335 + cal.winY}) scale(${cal.winScale}) translate(-210, -335)`;
+
+      // Exakte Koordinaten des Fensterbretts im Raum (damit Kakteen, Kaffee, Katze & Bücher direkt auf dem Steinbrett stehen)
+      const sillY = 335 + cal.winY + (558 - 335) * cal.winScale;
+      const sillScale = cal.winScale / 0.61;
+      const sillTransform = `translate(210, ${sillY}) scale(${sillScale}) translate(-210, -333)`;
 
       let clipDef = `
         <clipPath id="apertureClip_${uid}">
@@ -1007,55 +1028,120 @@
       let outdoorTreesSvg = '';
       if (eq.plants === 'spherical_trees') {
         outdoorTreesSvg = `
-          <g class="idle-sway" transform="translate(0, 185)">
-            <path d="M175,360 Q172,265 178,205" stroke="#2B211B" stroke-width="5.5" fill="none"/>
-            <ellipse cx="178" cy="195" rx="46" ry="35" fill="#23382A"/>
-            <ellipse cx="166" cy="188" rx="34" ry="25" fill="#36523E"/>
+          <g class="idle-sway" transform="translate(0, 215)">
+            <path d="M175,390 Q172,275 178,205" stroke="#2B211B" stroke-width="6.5" fill="none"/>
+            <ellipse cx="178" cy="195" rx="48" ry="36" fill="#23382A"/>
+            <ellipse cx="166" cy="188" rx="35" ry="26" fill="#36523E"/>
           </g>
         `;
       }
 
+      // Boden-Elemente (stehen im Raum neben/unter dem Fenster, nicht auf dem Fensterbrett)
+      let floorDecorSvg = '';
+      if (eq.decor === 'wooden_chair') {
+        // Malerischer Edward-Hopper Mid-Century Holzstuhl mit warmen Lichtkanten & Wand-Schatten
+        floorDecorSvg = `
+          <g transform="translate(18, 285)">
+            <!-- Schlagschatten des Stuhls an der Wand -->
+            <polygon points="8,112 72,112 66,228 2,228" fill="#0B0806" opacity="0.26" />
+            <!-- Hinterbeine & Rückenlehne -->
+            <path d="M16,62 L14,222" stroke="#23130D" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M64,62 L64,138" stroke="#2E1912" stroke-width="5" stroke-linecap="round"/>
+            <!-- Obere geschwungene Lehne mit Hopper-Sonnenlichtkante -->
+            <path d="M11,64 Q40,59 69,64 L68,76 Q40,72 12,76 Z" fill="#4A281B"/>
+            <path d="M11,64 Q40,59 69,64 L69,67 Q40,62 11,67 Z" fill="#D98A54" opacity="0.75"/>
+            <!-- Vertikale Sprossen mit Lichtstreifen -->
+            <rect x="26" y="74" width="3.5" height="62" fill="#381E14"/>
+            <rect x="26" y="74" width="1.2" height="62" fill="#C87A48" opacity="0.6"/>
+            <rect x="38" y="74" width="3.5" height="62" fill="#381E14"/>
+            <rect x="38" y="74" width="1.2" height="62" fill="#C87A48" opacity="0.6"/>
+            <rect x="50" y="74" width="3.5" height="62" fill="#381E14"/>
+            <!-- Perspektivische Sitzfläche -->
+            <polygon points="10,136 68,136 82,146 18,146" fill="#5E3423"/>
+            <polygon points="10,136 68,136 82,140 15,140" fill="#E0945E" opacity="0.65"/>
+            <polygon points="18,146 82,146 80,153 16,153" fill="#2A160F"/>
+            <!-- Vorderbeine & Querstrebe -->
+            <path d="M22,151 L20,232" stroke="#3B2016" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M21,151 L19,232" stroke="#C87A48" stroke-width="1.4" opacity="0.55"/>
+            <path d="M76,151 L78,232" stroke="#24130C" stroke-width="5.5" stroke-linecap="round"/>
+            <line x1="16" y1="194" x2="76" y2="198" stroke="#2A160F" stroke-width="3.5"/>
+          </g>
+        `;
+      } else if (eq.decor === 'vinyl_lamp_cocktail') {
+        floorDecorSvg = `
+          <g transform="translate(8, 340)">
+            <rect x="10" y="72" width="96" height="85" rx="6" fill="#4E2015"/>
+            <rect x="10" y="72" width="96" height="6" rx="2" fill="#C87A48" opacity="0.6"/>
+            <path d="M44,18 A28,24 0 0,1 100,18 Z" fill="#D99B38"/>
+            <rect x="69" y="18" width="6" height="54" fill="#E8B858"/>
+            <g class="idle-vinyl"><ellipse cx="42" cy="70" rx="24" ry="6" fill="#141414"/><ellipse cx="42" cy="70" rx="7" ry="2" fill="#D45D3F"/></g>
+          </g>
+        `;
+      }
+
+      if (eq.plants === 'fig_tree') {
+        floorDecorSvg += `
+          <g transform="translate(318, 305)">
+            <polygon points="16,145 64,145 56,202 24,202" fill="#9E422B"/>
+            <polygon points="14,142 66,142 64,150 16,150" fill="#B8533A"/>
+            <g class="idle-sway">
+              <path d="M40,145 Q32,75 44,12" stroke="#3D2618" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+              <ellipse cx="24" cy="62" rx="22" ry="12" fill="#23422E" transform="rotate(-14 24 62)"/>
+              <ellipse cx="56" cy="42" rx="24" ry="13" fill="#325940" transform="rotate(12 56 42)"/>
+              <ellipse cx="34" cy="16" rx="21" ry="11" fill="#3D6B4E" transform="rotate(-8 34 16)"/>
+            </g>
+          </g>
+        `;
+      }
+
+      if (eq.animal === 'sleeping_greyhound') {
+        floorDecorSvg += `
+          <g transform="translate(125, 488)">
+            <ellipse cx="85" cy="24" rx="72" ry="14" fill="#6E281D" opacity="0.85"/>
+            <g class="idle-breathe">
+              <ellipse cx="80" cy="19" rx="38" ry="11.5" fill="#9C8574"/>
+              <path d="M110,16 L134,21 L115,25 Z" fill="#856F5F"/>
+            </g>
+          </g>
+        `;
+      }
+
+      // Fensterbrett-Elemente (relativ zur Oberkante des Stein-Fensterbretts y=333)
       let plantsSvg = '';
       if (eq.plants === 'lush_monstera') {
         plantsSvg = `
           <g class="idle-sway" fill="#264733">
-            <path d="M145,335 C130,270 155,220 192,210 C182,255 172,290 158,335 Z"/>
-            <circle cx="165" cy="302" r="26" fill="#365E44"/>
+            <path d="M140,333 C125,270 150,220 188,210 C178,255 168,290 154,333 Z"/>
+            <circle cx="160" cy="300" r="24" fill="#365E44"/>
           </g>
           <g class="idle-sway-slow" fill="#1C3626">
-            <path d="M275,335 C295,265 268,215 228,200 C242,250 252,290 265,335 Z"/>
-            <circle cx="252" cy="298" r="28" fill="#2D523A"/>
+            <path d="M280,333 C300,265 272,215 232,200 C246,250 256,290 268,333 Z"/>
+            <circle cx="256" cy="296" r="26" fill="#2D523A"/>
           </g>
         `;
       } else if (eq.plants === 'hanging_pothos') {
-        plantsSvg = `<g class="idle-sway-top" fill="#385E44"><path d="M92,0 Q98,80 88,165" stroke="#26422F" stroke-width="2.5" fill="none"/><ellipse cx="90" cy="48" rx="10" ry="14"/><ellipse cx="98" cy="90" rx="9" ry="13" fill="#4D7A5B"/><ellipse cx="86" cy="132" rx="8" ry="12"/></g><g class="idle-sway-top" fill="#385E44" style="animation-delay:1.5s"><path d="M325,0 Q316,95 330,180" stroke="#26422F" stroke-width="2.5" fill="none"/><ellipse cx="322" cy="58" rx="11" ry="15"/><ellipse cx="330" cy="110" rx="9" ry="13" fill="#4D7A5B"/></g>`;
+        plantsSvg = `<g class="idle-sway-top" fill="#385E44"><path d="M135,125 Q142,190 132,265" stroke="#26422F" stroke-width="2.5" fill="none"/><ellipse cx="134" cy="165" rx="9" ry="13"/><ellipse cx="141" cy="202" rx="8" ry="12" fill="#4D7A5B"/><ellipse cx="131" cy="238" rx="7" ry="11"/></g><g class="idle-sway-top" fill="#385E44" style="animation-delay:1.5s"><path d="M282,125 Q274,200 286,272" stroke="#26422F" stroke-width="2.5" fill="none"/><ellipse cx="279" cy="175" rx="10" ry="14"/><ellipse cx="286" cy="220" rx="8" ry="12" fill="#4D7A5B"/></g>`;
       } else if (eq.plants === 'bonsai_pot') {
-        plantsSvg = `<rect x="235" y="317" width="40" height="17" rx="4" fill="#2A3B47"/><g class="idle-sway"><path d="M255,317 C250,295 266,285 248,268" stroke="#4A2F21" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="242" cy="266" rx="23" ry="11" fill="#2D4F38"/><ellipse cx="265" cy="278" rx="17" ry="8" fill="#3B6348"/></g>`;
+        plantsSvg = `<ellipse cx="255" cy="334" rx="22" ry="3" fill="#000" opacity="0.28"/><rect x="235" y="317" width="40" height="16" rx="4" fill="#2A3B47"/><g class="idle-sway"><path d="M255,317 C250,295 266,285 248,268" stroke="#4A2F21" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="242" cy="266" rx="23" ry="11" fill="#2D4F38"/><ellipse cx="265" cy="278" rx="17" ry="8" fill="#3B6348"/></g>`;
       } else if (eq.plants === 'dried_eucalyptus') {
-        plantsSvg = `<path d="M155,304 L165,335 L145,335 Z" fill="#1F2933"/><g class="idle-sway"><path d="M155,304 Q141,268 137,240 M155,304 Q165,262 173,236" stroke="#7D7461" stroke-width="2" fill="none"/><circle cx="137" cy="240" r="5.5" fill="#9E8B6E"/><circle cx="173" cy="236" r="6.5" fill="#8C7A5B"/></g>`;
-      } else if (eq.plants === 'fig_tree') {
-        plantsSvg = `<rect x="340" y="345" width="44" height="46" rx="5" fill="#A84A32"/><g class="idle-sway"><path d="M362,345 Q355,255 366,182" stroke="#4A3222" stroke-width="6" fill="none"/><ellipse cx="346" cy="220" rx="25" ry="14" fill="#23422E"/><ellipse cx="378" cy="195" rx="27" ry="15" fill="#31573E"/><ellipse cx="355" cy="164" rx="23" ry="13" fill="#23422E"/></g>`;
+        plantsSvg = `<ellipse cx="155" cy="334" rx="13" ry="2.5" fill="#000" opacity="0.28"/><path d="M150,302 L160,302 L164,333 L146,333 Z" fill="#2C353D"/><g class="idle-sway"><path d="M155,302 Q141,268 137,240 M155,302 Q165,262 173,236" stroke="#7D7461" stroke-width="2" fill="none"/><circle cx="137" cy="240" r="5.5" fill="#9E8B6E"/><circle cx="173" cy="236" r="6.5" fill="#8C7A5B"/><circle cx="146" cy="262" r="5" fill="#A69577"/></g>`;
       } else if (eq.plants === 'sill_cacti') {
-        plantsSvg = `<polygon points="150,314 172,314 168,335 154,335" fill="#C85A32"/><rect class="idle-sway" x="156" y="282" width="10" height="32" rx="5" fill="#3B6345"/><polygon points="183,319 201,319 198,335 186,335" fill="#B84A27"/><circle cx="192" cy="310" r="9.5" fill="#497554"/>`;
+        plantsSvg = `<ellipse cx="161" cy="334" rx="12" ry="2.5" fill="#000" opacity="0.25"/><polygon points="150,313 172,313 168,333 154,333" fill="#C85A32"/><rect class="idle-sway" x="156" y="282" width="10" height="31" rx="5" fill="#3B6345"/><ellipse cx="192" cy="334" rx="10" ry="2" fill="#000" opacity="0.25"/><polygon points="183,318 201,318 198,333 186,333" fill="#B84A27"/><circle cx="192" cy="309" r="9.5" fill="#497554"/>`;
       }
 
       let decorSvg = '';
-      if (eq.decor === 'wooden_chair') {
-        decorSvg = `<g transform="translate(-18, 25)" stroke="#24140E" stroke-width="4" fill="none"><line x1="42" y1="305" x2="42" y2="410"/><line x1="90" y1="358" x2="90" y2="410"/><line x1="52" y1="305" x2="52" y2="358" stroke-width="2"/><line x1="62" y1="305" x2="62" y2="358" stroke-width="2"/><line x1="72" y1="305" x2="72" y2="358" stroke-width="2"/><line x1="38" y1="305" x2="80" y2="305" stroke-width="5"/><polygon points="38,358 96,358 90,365 38,365" fill="#3B2219" stroke="none"/></g>`;
-      } else if (eq.decor === 'vinyl_lamp_cocktail') {
-        decorSvg = `<rect x="25" y="355" width="155" height="90" rx="8" fill="#6E2B1C"/><path d="M78,278 A39,33 0 0,1 156,278 Z" fill="#B58938"/><rect x="113" y="278" width="8" height="77" fill="#D4AF37"/><g class="idle-vinyl"><ellipse cx="108" cy="378" rx="42" ry="13" fill="#121212"/><ellipse cx="108" cy="378" rx="13" ry="4.5" fill="#C83E2B"/><line x1="75" y1="378" x2="141" y2="378" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/></g><polygon points="52,320 82,320 67,336" fill="#E8B84B" opacity="0.9"/><line x1="67" y1="336" x2="67" y2="356" stroke="#F4ECE1" stroke-width="2"/><ellipse cx="67" cy="356" rx="10" ry="3" fill="#F4ECE1"/>`;
-      } else if (eq.decor === 'diner_set') {
+      if (eq.decor === 'diner_set') {
         decorSvg = `<rect x="148" y="314" width="19" height="19" rx="3" fill="#F2E8DC"/><path d="M167,318 H172 V327 H167" fill="none" stroke="#F2E8DC" stroke-width="2.5"/><path class="idle-steam" d="M155,308 Q152,296 159,286" stroke="#F2E8DC" stroke-width="1.6" fill="none"/><rect x="182" y="307" width="17" height="26" rx="2" fill="#B0B8BF"/>`;
       } else if (eq.decor === 'noir_coffee') {
-        decorSvg = `<rect x="155" y="316" width="21" height="17" rx="3" fill="#1F1D1B"/><path class="idle-steam" d="M162,310 Q157,296 165,285" stroke="#E6DCD2" stroke-width="1.8" fill="none"/><path class="idle-steam-2" d="M170,312 Q175,298 167,287" stroke="#E6DCD2" stroke-width="1.5" fill="none"/><ellipse cx="197" cy="329" rx="12" ry="4" fill="#4A4542"/>`;
+        decorSvg = `<ellipse cx="166" cy="334" rx="14" ry="2.5" fill="#000" opacity="0.3"/><rect x="155" y="316" width="21" height="17" rx="3" fill="#1F1D1B"/><path class="idle-steam" d="M162,310 Q157,296 165,285" stroke="#E6DCD2" stroke-width="1.8" fill="none"/><path class="idle-steam-2" d="M170,312 Q175,298 167,287" stroke="#E6DCD2" stroke-width="1.5" fill="none"/><ellipse cx="197" cy="330" rx="12" ry="3.5" fill="#4A4542"/>`;
       } else if (eq.decor === 'typewriter') {
         decorSvg = `<rect x="165" y="308" width="48" height="25" rx="4" fill="#23272A"/><rect class="idle-breathe" x="174" y="290" width="30" height="19" fill="#F4ECE1"/><line x1="160" y1="308" x2="218" y2="308" stroke="#9E9083" stroke-width="3"/>`;
       } else if (eq.decor === 'open_book') {
-        decorSvg = `<polygon points="155,331 187,325 187,335 155,339" fill="#F4ECE1"/><polygon points="187,325 219,331 219,339 187,335" fill="#E2D5C6"/><path d="M187,329 Q190,344 197,350" stroke="#C83E2B" stroke-width="2.5" fill="none"/>`;
+        decorSvg = `<polygon points="155,329 187,323 187,333 155,336" fill="#F4ECE1"/><polygon points="187,323 219,329 219,336 187,333" fill="#E2D5C6"/><path d="M187,327 Q190,342 197,348" stroke="#C83E2B" stroke-width="2.5" fill="none"/>`;
       } else if (eq.decor === 'retro_radio') {
         decorSvg = `<rect x="225" y="304" width="46" height="29" rx="5" fill="#5C3317"/><rect class="idle-neon" x="232" y="311" width="19" height="13" rx="2" fill="#E8B84B"/><circle cx="261" cy="317" r="4.5" fill="#2B180A"/>`;
       } else if (eq.decor === 'velvet_curtains') {
-        decorSvg = `<path class="idle-sway-top" d="M75,-20 Q125,140 95,355 L65,355 L65,-20 Z" fill="#6E1414"/><path class="idle-sway-top" style="animation-delay:1.8s" d="M345,-20 Q295,140 325,355 L355,355 L355,-20 Z" fill="#520E0E"/>`;
+        decorSvg = `<path class="idle-sway-top" d="M98,95 Q138,210 114,342 L88,342 L88,95 Z" fill="#6E1414"/><path class="idle-sway-top" style="animation-delay:1.8s" d="M322,95 Q282,210 306,342 L332,342 L332,95 Z" fill="#520E0E"/>`;
       }
 
       let charSvg = '';
@@ -1068,48 +1154,45 @@
       } else if (eq.character === 'diner_patrons') {
         charSvg = `<g class="idle-breathe"><circle cx="162" cy="242" r="10.5" fill="#121314"/><path d="M145,255 L177,255 L181,304 L142,304 Z" fill="#121314"/><circle cx="215" cy="239" r="11.5" fill="#121314"/><path d="M200,252 L232,252 L235,304 L198,304 Z" fill="#121314"/></g>`;
       } else if (eq.character === 'window_smoker') {
-        charSvg = `<g class="idle-breathe"><circle cx="168" cy="195" r="13" fill="#14110F"/><path d="M148,212 L188,212 L183,335 L145,335 Z" fill="#14110F"/><circle class="idle-neon" cx="191" cy="203" r="2.2" fill="#FF6B35"/><path class="idle-steam" d="M193,199 Q201,180 195,164" stroke="#D8D8D8" stroke-width="1.6" fill="none"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="168" cy="195" r="13" fill="#14110F"/><path d="M148,212 L188,212 L183,333 L145,333 Z" fill="#14110F"/><circle class="idle-neon" cx="191" cy="203" r="2.2" fill="#FF6B35"/><path class="idle-steam" d="M193,199 Q201,180 195,164" stroke="#D8D8D8" stroke-width="1.6" fill="none"/></g>`;
       } else if (eq.character === 'back_reader') {
-        charSvg = `<g class="idle-breathe"><circle cx="210" cy="250" r="14" fill="#1C1613"/><path d="M180,270 Q210,264 240,270 L248,335 L172,335 Z" fill="#2A211D"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="210" cy="250" r="14" fill="#1C1613"/><path d="M180,270 Q210,264 240,270 L248,333 L172,333 Z" fill="#2A211D"/></g>`;
       } else if (eq.character === 'rain_trenchcoat') {
         charSvg = `<g class="idle-breathe"><polygon points="198,202 224,202 231,210 191,210" fill="#12161A"/><path d="M194,212 L227,212 L235,325 L186,325 Z" fill="#1B2228"/></g>`;
       } else if (eq.character === 'sky_gazer') {
-        charSvg = `<g class="idle-breathe"><circle cx="245" cy="222" r="13" fill="#1A1412"/><path d="M228,239 L264,239 L268,335 L224,335 Z" fill="#261E1B"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="245" cy="222" r="13" fill="#1A1412"/><path d="M228,239 L264,239 L268,333 L224,333 Z" fill="#261E1B"/></g>`;
       } else if (eq.character === 'quiet_couple') {
-        charSvg = `<g class="idle-breathe"><circle cx="172" cy="250" r="11" fill="#171311"/><path d="M156,264 L188,264 L192,335 L152,335 Z" fill="#171311"/><circle cx="248" cy="250" r="11" fill="#171311"/><path d="M232,264 L264,264 L268,335 L228,335 Z" fill="#171311"/><rect x="188" y="304" width="44" height="6" fill="#2B1D16"/></g>`;
+        charSvg = `<g class="idle-breathe"><circle cx="172" cy="250" r="11" fill="#171311"/><path d="M156,264 L188,264 L192,333 L152,333 Z" fill="#171311"/><circle cx="248" cy="250" r="11" fill="#171311"/><path d="M232,264 L264,264 L268,333 L228,333 Z" fill="#171311"/><rect x="188" y="304" width="44" height="6" fill="#2B1D16"/></g>`;
       }
 
       let animalSvg = '';
       if (eq.animal === 'black_cat_books') {
         animalSvg = `
-          <rect x="182" y="321" width="76" height="12" rx="2" fill="#A8241C"/>
-          <rect x="187" y="333" width="72" height="11" rx="2" fill="#3B5238"/>
-          <path class="idle-tail" d="M192,316 Q168,322 164,308" stroke="#0D0D0D" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <ellipse class="idle-breathe" cx="220" cy="313" rx="26" ry="12" fill="#0D0D0D"/>
-          <circle cx="238" cy="307" r="11" fill="#0D0D0D"/>
-          <polygon points="230,299 234,289 239,298" fill="#0D0D0D"/>
-          <polygon points="240,298 246,289 248,300" fill="#0D0D0D"/>
-          <g class="idle-blink"><circle cx="235" cy="307" r="2.2" fill="#A7C957"/><circle cx="243" cy="307" r="2.2" fill="#A7C957"/></g>
+          <rect x="182" y="319" width="76" height="11" rx="2" fill="#A8241C"/>
+          <rect x="187" y="329" width="72" height="9" rx="2" fill="#3B5238"/>
+          <path class="idle-tail" d="M192,314 Q168,320 164,306" stroke="#0D0D0D" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <ellipse class="idle-breathe" cx="220" cy="311" rx="26" ry="12" fill="#0D0D0D"/>
+          <circle cx="238" cy="305" r="11" fill="#0D0D0D"/>
+          <polygon points="230,297 234,287 239,296" fill="#0D0D0D"/>
+          <polygon points="240,296 246,287 248,298" fill="#0D0D0D"/>
+          <g class="idle-blink"><circle cx="235" cy="305" r="2.2" fill="#A7C957"/><circle cx="243" cy="305" r="2.2" fill="#A7C957"/></g>
         `;
       } else if (eq.animal === 'red_tabby') {
-        animalSvg = `<ellipse class="idle-breathe" cx="205" cy="317" rx="14" ry="18" fill="#D96B27"/><circle cx="205" cy="295" r="10.5" fill="#D96B27"/><polygon points="197,289 199,280 204,287" fill="#B85214"/><polygon points="206,287 211,280 213,289" fill="#B85214"/><path class="idle-tail" d="M214,329 Q234,331 238,315" stroke="#D96B27" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
-      } else if (eq.animal === 'sleeping_greyhound') {
-        animalSvg = `<ellipse cx="215" cy="395" rx="70" ry="16" fill="#7D3225"/><g class="idle-breathe"><ellipse cx="210" cy="390" rx="38" ry="11.5" fill="#8C7A6B"/><path d="M240,388 L264,392 L245,396 Z" fill="#8C7A6B"/></g>`;
+        animalSvg = `<ellipse class="idle-breathe" cx="205" cy="316" rx="14" ry="17" fill="#D96B27"/><circle cx="205" cy="295" r="10.5" fill="#D96B27"/><polygon points="197,289 199,280 204,287" fill="#B85214"/><polygon points="206,287 211,280 213,289" fill="#B85214"/><path class="idle-tail" d="M214,328 Q234,330 238,314" stroke="#D96B27" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
       } else if (eq.animal === 'vintage_bird') {
         animalSvg = `<g class="idle-breathe"><ellipse cx="168" cy="325" rx="8.5" ry="6.5" fill="#E0A94E"/><circle cx="174" cy="321" r="5" fill="#E0A94E"/><polygon points="179,321 184,323 179,324" fill="#D45D3F"/></g>`;
       } else if (eq.animal === 'wall_raven') {
         animalSvg = `<g class="idle-breathe"><ellipse cx="255" cy="321" rx="10.5" ry="7.5" fill="#121317"/><circle cx="248" cy="314" r="6" fill="#121317"/><polygon points="242,314 234,316 242,318" fill="#2B2D38"/></g>`;
       } else if (eq.animal === 'night_moths') {
-        animalSvg = `<circle cx="210" cy="145" r="8" fill="#FFF3B0"/><circle class="idle-float" cx="210" cy="145" r="24" fill="#FFF3B0" opacity="0.22"/><g class="idle-moth"><path d="M186,138 L193,142 L186,146 Z M234,148 L227,152 L234,156 Z" fill="#F2E8DC"/></g>`;
+        animalSvg = `<circle cx="210" cy="185" r="7" fill="#FFF3B0"/><circle class="idle-float" cx="210" cy="185" r="22" fill="#FFF3B0" opacity="0.22"/><g class="idle-moth"><path d="M186,178 L193,182 L186,186 Z M234,188 L227,192 L234,196 Z" fill="#F2E8DC"/></g>`;
       } else if (eq.animal === 'ceiling_fan') {
-        animalSvg = `<line x1="210" y1="-80" x2="210" y2="-35" stroke="#1E1916" stroke-width="4"/><g class="idle-fan"><ellipse cx="210" cy="-35" rx="72" ry="7" fill="#2B211B"/></g><ellipse cx="210" cy="-35" rx="16" ry="5" fill="#14110F"/>`;
+        animalSvg = `<line x1="210" y1="40" x2="210" y2="82" stroke="#1E1916" stroke-width="4"/><g class="idle-fan"><ellipse cx="210" cy="82" rx="68" ry="6.5" fill="#2B211B"/></g><ellipse cx="210" cy="82" rx="15" ry="4.5" fill="#14110F"/>`;
       }
 
       let lightSvg = '';
       const dustParticles = `<g class="idle-dust" fill="#FFF3D6"><circle cx="165" cy="240" r="1.6" opacity="0.6"/><circle cx="215" cy="285" r="2.1" opacity="0.5"/><circle cx="250" cy="225" r="1.4" opacity="0.7"/><circle cx="185" cy="320" r="1.8" opacity="0.45"/></g><g class="idle-dust-2" fill="#FFE082"><circle cx="155" cy="295" r="1.5" opacity="0.5"/><circle cx="235" cy="265" r="2" opacity="0.65"/><circle cx="265" cy="305" r="1.4" opacity="0.5"/></g>`;
 
       if (eq.light === 'hard_sun') {
-        // Da die KI-Bilder bereits den echten Hopper-Lichtwurf enthalten, fügen wir hier nur die sanften Staubpartikel hinzu (ohne den störenden dunklen Balken)
         lightSvg = `${dustParticles}`;
       } else if (eq.light === 'golden_hour') {
         lightSvg = `<rect width="420" height="750" fill="#FF9E44" opacity="0.16"/>${dustParticles}`;
@@ -1123,27 +1206,31 @@
         lightSvg = `<rect class="idle-neon" width="420" height="750" fill="#FF1E56" opacity="0.18"/>`;
       }
 
-      const bottomVignette = `<linearGradient id="vig_${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#14110F" stop-opacity="0"/><stop offset="55%" stop-color="#14110F" stop-opacity="0.15"/><stop offset="100%" stop-color="#14110F" stop-opacity="0.72"/></linearGradient><rect x="0" y="420" width="420" height="330" fill="url(#vig_${uid})"/>`;
+      const bottomVignette = `<linearGradient id="vig_${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#14110F" stop-opacity="0"/><stop offset="55%" stop-color="#14110F" stop-opacity="0.14"/><stop offset="100%" stop-color="#14110F" stop-opacity="0.68"/></linearGradient><rect x="0" y="440" width="420" height="310" fill="url(#vig_${uid})"/>`;
 
       return `
         <defs>${clipDef}</defs>
         
         <!-- 📍 1. ECHTE WAND (.jpg) - Füllt den gesamten 9:16 Raum im Hintergrund 📍 -->
-        <image href="assets/walls/${eq.wall}.jpg?v=6" x="0" y="0" width="420" height="750" preserveAspectRatio="xMidYMid slice" />
+        <image href="assets/walls/${eq.wall}.jpg?v=7" x="0" y="0" width="420" height="750" preserveAspectRatio="xMidYMid slice" />
         
         <!-- 📍 2. SYNCHRONISIERTE FENSTER-GRUPPE (Aussicht + Passepartout-Maske + Rahmen) 📍 -->
         <g transform="${winTransform}">
-          <!-- Die Aussicht (.jpg) wird passgenau in die Fensteröffnung skaliert und am Innenrand des Rahmens beschnitten -->
+          <!-- Die Aussicht (.jpg) reicht jetzt bis tief unter das massive Stein-Fensterbrett (y=612), damit 0px Wand durchscheinen -->
           <g clip-path="url(#apertureClip_${uid})">
-            <image href="assets/views/${eq.view}.jpg?v=6" x="${vx}" y="${vy}" width="${vw}" height="${vh}" preserveAspectRatio="xMidYMid slice" />
+            <rect x="60" y="100" width="300" height="520" fill="#14110F" />
+            <image href="assets/views/${eq.view}.jpg?v=7" x="${vx}" y="${vy}" width="${vw}" height="${vh}" preserveAspectRatio="xMidYMid slice" />
             ${outdoorTreesSvg}
           </g>
           
           <!-- Der freigestellte Fensterrahmen (.png) legt sich nahtlos über die Schnittkante der Aussicht -->
-          <image href="assets/frames/${eq.frame}.png?v=6" x="0" y="0" width="420" height="750" preserveAspectRatio="xMidYMid slice" />
+          <image href="assets/frames/${eq.frame}.png?v=7" x="0" y="0" width="420" height="750" preserveAspectRatio="xMidYMid slice" />
         </g>
+
+        <!-- 📍 3. BODEN-MÖBEL & PFLANZEN IM RAUM (Stuhl, Feigenbaum etc. im richtigen Maßstab) 📍 -->
+        ${floorDecorSvg}
         
-        <!-- 📍 3. DYNAMISCHE LAYER FÜR PFLANZEN, DEKO, TIERE & LICHT (synchron zum Fensterbrett) 📍 -->
+        <!-- 📍 4. FENSTERBRETT-OBJEKTE (synchron auf der Steinkante platziert) 📍 -->
         <g transform="${sillTransform}">
           ${plantsSvg}${decorSvg}${charSvg}${animalSvg}
         </g>
@@ -1156,38 +1243,60 @@
       if (catKey === 'frame') {
         return `<svg viewBox="0 0 80 65" width="100%" height="100%">
           <rect width="80" height="65" fill="#241B18"/>
-          <!-- 📍 HIER: Mini-Vorschau Fensterrahmen (.png) -->
-          <image href="assets/frames/${item.id}.png?v=5" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
+          <image href="assets/frames/${item.id}.png?v=7" x="0" y="-12" width="80" height="95" preserveAspectRatio="xMidYMid slice" />
         </svg>`;
       }
       if (catKey === 'wall') {
         return `<svg viewBox="0 0 80 65" width="100%" height="100%">
-          <!-- 📍 HIER: Mini-Vorschau Wand (.jpg) -->
-          <image href="assets/walls/${item.id}.jpg?v=5" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
+          <image href="assets/walls/${item.id}.jpg?v=7" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
         </svg>`;
       }
       if (catKey === 'view') {
         return `<svg viewBox="0 0 80 65" width="100%" height="100%">
-          <!-- 📍 HIER: Mini-Vorschau Aussicht (.jpg) -->
-          <image href="assets/views/${item.id}.jpg?v=5" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
+          <image href="assets/views/${item.id}.jpg?v=7" width="80" height="65" preserveAspectRatio="xMidYMid slice" />
         </svg>`;
       }
       if (catKey === 'light') {
         return `<svg viewBox="0 0 80 65" width="100%" height="100%">
-          <rect width="80" height="65" fill="#181412"/>
-          <polygon points="0,55 80,10 80,65 0,65" fill="${c}" opacity="0.65"/>
+          <rect width="80" height="65" fill="#181311"/>
+          <polygon points="8,65 80,8 80,65" fill="${c}" opacity="0.75"/>
+          <circle cx="58" cy="22" r="4" fill="#FFF3D6" opacity="0.8"/>
         </svg>`;
       }
       if (catKey === 'plants') {
-        return `<svg viewBox="0 0 80 65" width="100%" height="100%">
-          <rect width="80" height="65" fill="#1A1513"/>
-          <circle cx="40" cy="32" r="16" fill="${c}"/>
-          <rect x="33" y="45" width="14" height="12" rx="2" fill="#A84A32"/>
-        </svg>`;
+        let art = `<circle cx="40" cy="32" r="8" fill="#332923"/>`;
+        if (item.id === 'sill_cacti') art = `<polygon points="24,42 36,42 34,54 26,54" fill="#C85A32"/><rect x="27" y="22" width="6" height="20" rx="3" fill="#497554"/><polygon points="44,45 56,45 54,54 46,54" fill="#B84A27"/><circle cx="50" cy="38" r="6.5" fill="#5E8C70"/>`;
+        else if (item.id === 'dried_eucalyptus') art = `<polygon points="34,36 46,36 48,55 32,55" fill="#2C353D"/><path d="M40,36 Q30,22 28,12 M40,36 Q48,20 52,12" stroke="#8C7A5B" stroke-width="2" fill="none"/><circle cx="28" cy="12" r="4.5" fill="#A69577"/><circle cx="52" cy="12" r="5" fill="#8C7A5B"/><circle cx="34" cy="22" r="4" fill="#9E8B6E"/>`;
+        else if (item.id === 'hanging_pothos') art = `<path d="M28,0 Q34,28 26,56 M52,0 Q46,28 54,56" stroke="#2D4F38" stroke-width="2.2" fill="none"/><ellipse cx="28" cy="18" rx="6" ry="8" fill="#385E44"/><ellipse cx="32" cy="36" rx="5.5" ry="7.5" fill="#4D7A5B"/><ellipse cx="50" cy="22" rx="6" ry="8" fill="#4D7A5B"/><ellipse cx="53" cy="42" rx="5" ry="7" fill="#385E44"/>`;
+        else if (item.id === 'spherical_trees') art = `<line x1="40" y1="58" x2="40" y2="30" stroke="#3D2618" stroke-width="4"/><ellipse cx="40" cy="26" rx="20" ry="15" fill="#23382A"/><ellipse cx="35" cy="23" rx="14" ry="10" fill="#36523E"/>`;
+        else if (item.id === 'fig_tree') art = `<polygon points="31,42 49,42 46,57 34,57" fill="#A84A32"/><path d="M40,42 Q37,26 42,12" stroke="#4A3222" stroke-width="3.5" fill="none"/><ellipse cx="31" cy="26" rx="11" ry="6" fill="#23422E"/><ellipse cx="49" cy="20" rx="12" ry="6.5" fill="#31573E"/><ellipse cx="38" cy="12" rx="10" ry="5.5" fill="#3D6B4E"/>`;
+        else if (item.id === 'bonsai_pot') art = `<rect x="24" y="44" width="32" height="10" rx="3" fill="#2A3B47"/><path d="M40,44 C36,32 48,26 36,18" stroke="#4A2F21" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="32" cy="18" rx="14" ry="7" fill="#2D4F38"/><ellipse cx="48" cy="25" rx="11" ry="5.5" fill="#3B6348"/>`;
+        else if (item.id === 'lush_monstera') art = `<circle cx="28" cy="34" r="14" fill="#264733"/><circle cx="50" cy="30" r="16" fill="#365E44"/><circle cx="40" cy="42" r="13" fill="#1C3626"/>`;
+        return `<svg viewBox="0 0 80 65" width="100%" height="100%"><rect width="80" height="65" fill="#1A1513"/><line x1="8" y1="54" x2="72" y2="54" stroke="#332923" stroke-width="2"/>${art}</svg>`;
+      }
+      if (catKey === 'decor') {
+        let art = `<circle cx="40" cy="32" r="12" fill="${c}"/>`;
+        if (item.id === 'wooden_chair') art = `<path d="M26,12 L25,54 M52,12 L52,36 M30,36 L29,56 M56,36 L57,56" stroke="#4A281B" stroke-width="3.2" stroke-linecap="round"/><rect x="24" y="13" width="30" height="5" rx="1.5" fill="#C87A48"/><polygon points="24,34 54,34 60,39 27,39" fill="#D98A54"/>`;
+        else if (item.id === 'open_book') art = `<polygon points="18,42 40,36 40,46 18,50" fill="#F4ECE1"/><polygon points="40,36 62,42 62,50 40,46" fill="#E2D5C6"/><path d="M40,39 Q42,50 47,54" stroke="#C83E2B" stroke-width="2" fill="none"/>`;
+        else if (item.id === 'noir_coffee') art = `<rect x="28" y="32" width="18" height="16" rx="3" fill="#2A2624"/><path d="M46,35 H51 V43 H46" fill="none" stroke="#2A2624" stroke-width="2.5"/><path d="M34,27 Q31,18 37,12 M41,28 Q45,19 39,13" stroke="#E6DCD2" stroke-width="1.6" fill="none"/>`;
+        else if (item.id === 'vinyl_lamp_cocktail') art = `<path d="M26,28 A16,14 0 0,1 58,28 Z" fill="#D99B38"/><rect x="40" y="28" width="4" height="24" fill="#E8B858"/><ellipse cx="32" cy="52" rx="14" ry="4" fill="#121212"/>`;
+        else if (item.id === 'retro_radio') art = `<rect x="20" y="24" width="40" height="26" rx="4" fill="#5C3317"/><rect x="26" y="30" width="16" height="11" rx="2" fill="#E8B84B"/><circle cx="51" cy="36" r="4" fill="#2B180A"/>`;
+        else if (item.id === 'typewriter') art = `<rect x="20" y="32" width="40" height="18" rx="3" fill="#2B3035"/><rect x="27" y="16" width="26" height="16" fill="#F4ECE1"/>`;
+        else if (item.id === 'velvet_curtains') art = `<path d="M12,6 Q28,30 20,58 L10,58 L10,6 Z M68,6 Q52,30 60,58 L70,58 L70,6 Z" fill="#7A1818"/>`;
+        return `<svg viewBox="0 0 80 65" width="100%" height="100%"><rect width="80" height="65" fill="#1A1513"/>${art}</svg>`;
+      }
+      if (catKey === 'animal') {
+        let art = `<circle cx="40" cy="32" r="10" fill="${c}"/>`;
+        if (item.id === 'red_tabby') art = `<ellipse cx="40" cy="40" rx="11" ry="13" fill="#D96B27"/><circle cx="40" cy="24" r="8.5" fill="#D96B27"/><polygon points="33,19 35,11 39,17" fill="#B85214"/><polygon points="41,17 45,11 47,19" fill="#B85214"/>`;
+        else if (item.id === 'black_cat_books') art = `<rect x="18" y="45" width="44" height="7" rx="1.5" fill="#A8241C"/><ellipse cx="40" cy="37" rx="16" ry="8" fill="#0D0D0D"/><circle cx="50" cy="31" r="7.5" fill="#0D0D0D"/><circle cx="48" cy="31" r="1.6" fill="#A7C957"/><circle cx="53" cy="31" r="1.6" fill="#A7C957"/>`;
+        else if (item.id === 'vintage_bird') art = `<ellipse cx="38" cy="36" rx="10" ry="7.5" fill="#E0A94E"/><circle cx="46" cy="30" r="6" fill="#E0A94E"/><polygon points="52,30 58,32 52,34" fill="#D45D3F"/>`;
+        else if (item.id === 'wall_raven') art = `<ellipse cx="42" cy="36" rx="11" ry="8" fill="#181A20"/><circle cx="33" cy="29" r="6.5" fill="#181A20"/><polygon points="27,29 20,31 27,33" fill="#3A3D4A"/>`;
+        return `<svg viewBox="0 0 80 65" width="100%" height="100%"><rect width="80" height="65" fill="#1A1513"/>${art}</svg>`;
       }
       return `<svg viewBox="0 0 80 65" width="100%" height="100%">
         <rect width="80" height="65" fill="#1A1513"/>
-        <circle cx="40" cy="32" r="15" fill="${c}"/>
+        <circle cx="40" cy="26" r="9" fill="${c}"/>
+        <path d="M26,54 C26,38 54,38 54,54 Z" fill="${c}" opacity="0.85"/>
       </svg>`;
     }
 
@@ -1570,8 +1679,9 @@
       document.getElementById('bgWindowSvg').innerHTML = buildWindowSceneSVG(null, 'bg');
       const isExpanded = document.getElementById('shopStageWrap').classList.contains('expanded');
       const shopSvg = document.getElementById('shopPreviewSvg');
-      shopSvg.setAttribute('viewBox', '0 0 420 750');
-      shopSvg.setAttribute('preserveAspectRatio', isExpanded ? 'xMidYMid slice' : 'xMidYMid meet');
+      // Im Atelier zeigt die Kamera einen breiten, bildfüllenden Architektur-Ausschnitt ohne schwarze Balken links/rechts!
+      shopSvg.setAttribute('viewBox', isExpanded ? '0 10 420 560' : '0 42 420 355');
+      shopSvg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
       shopSvg.innerHTML = buildWindowSceneSVG(previewOverride, 'shop');
 
       document.getElementById('creditBalance').textContent = state.credits.toLocaleString('de-DE');
@@ -2005,6 +2115,7 @@
     }
 
     function resetAllData() {
+      localStorage.removeItem('flowview_hopper_v5');
       localStorage.removeItem('flowview_hopper_v4');
       forceReloadCache();
     }
