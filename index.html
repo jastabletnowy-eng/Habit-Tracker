@@ -715,25 +715,25 @@
         { id: 'balcony_ledge', cost: 4500, name: 'Hohe Mauerkante', color: '#C2D1B2' }
       ]},
       wall: { label: 'Wände', items: [
-        { id: 'terracotta', cost: 0, name: 'Terrakotta-Putz', color: '#C84B31' },
-        { id: 'forest_green', cost: 400, name: 'Tiefes Waldgrün', color: '#2D4739' },
-        { id: 'mustard_yellow', cost: 550, name: 'Hopper-Senfgelb', color: '#D99B26' },
-        { id: 'dusty_rose', cost: 750, name: 'Erdiges Altrosa', color: '#B56576' },
-        { id: 'ocean_blue', cost: 950, name: 'Nachtblau', color: '#1D3557' },
-        { id: 'warm_concrete', cost: 1500, name: 'Warm-Sichtbeton', color: '#8A817C' },
-        { id: 'midcentury_wood', cost: 2200, name: 'Mid-Century Holz', color: '#5C3A21' },
-        { id: 'emerald_tiles', cost: 3200, name: 'Smaragd-Fliesen', color: '#135047' }
+        { id: 'Red', cost: 0, name: 'Terrakotta-Putz', color: '#C84B31' },
+        { id: 'Green', cost: 400, name: 'Tiefes Waldgrün', color: '#2D4739' },
+        { id: 'Yellow', cost: 550, name: 'Hopper-Senfgelb', color: '#D99B26' },
+        { id: 'Pink', cost: 750, name: 'Erdiges Altrosa', color: '#B56576' },
+        { id: 'Blue', cost: 950, name: 'Nachtblau', color: '#1D3557' },
+        { id: 'Concrete', cost: 1500, name: 'Warm-Sichtbeton', color: '#8A817C' },
+        { id: 'Wood', cost: 2200, name: 'Mid-Century Holz', color: '#5C3A21' },
+        { id: 'Green_tiles', cost: 3200, name: 'Smaragd-Fliesen', color: '#135047' }
       ]},
       view: { label: 'Aussicht', items: [
-        { id: 'ocean_moon', cost: 0, name: 'Ozean & Halbmond', color: '#2C5E70' },
-        { id: 'flat_sky', cost: 350, name: 'Strahlendes Blau', color: '#2A80B9' },
-        { id: 'desert_cacti', cost: 800, name: 'Wüste & Kakteen', color: '#D35400' },
-        { id: 'sunrise_mountains', cost: 1250, name: 'Dunst-Berge', color: '#6E4555' },
-        { id: 'med_courtyard', cost: 1750, name: 'Zypressen-Hof', color: '#D46548' },
-        { id: 'noir_skyline', cost: 2400, name: 'Film-Noir Skyline', color: '#121824' },
-        { id: 'zen_snow', cost: 3100, name: 'Schnee-Zengarten', color: '#95A9B8' },
-        { id: 'night_street', cost: 3900, name: 'Nighthawks-Ecke', color: '#E3B448' },
-        { id: 'retro_bar', cost: 4800, name: 'Rote Retro-Bar', color: '#E63B19' }
+        { id: 'Sea', cost: 0, name: 'Ozean & Halbmond', color: '#2C5E70' },
+        { id: 'Sky', cost: 350, name: 'Strahlendes Blau', color: '#2A80B9' },
+        { id: 'Desert', cost: 800, name: 'Wüste & Kakteen', color: '#D35400' },
+        { id: 'Mountains', cost: 1250, name: 'Dunst-Berge', color: '#6E4555' },
+        { id: 'Patio', cost: 1750, name: 'Zypressen-Hof', color: '#D46548' },
+        { id: 'City', cost: 2400, name: 'Film-Noir Skyline', color: '#121824' },
+        { id: 'Zen_snow', cost: 3100, name: 'Schnee-Zengarten', color: '#95A9B8' },
+        { id: 'Diner', cost: 3900, name: 'Nighthawks-Ecke', color: '#E3B448' },
+        { id: 'Retro_bar', cost: 4800, name: 'Rote Retro-Bar', color: '#E63B19' }
       ]},
       light: { label: 'Licht', items: [
         { id: 'hard_sun', cost: 0, name: 'Harte Sonne', color: '#FFE3B8' },
@@ -823,18 +823,18 @@
         }
       ],
       unlocked: [
-        'frame:arch_deep', 'wall:terracotta', 'view:ocean_moon',
+        'frame:arch_deep', 'wall:Red', 'view:Sea',
         'light:hard_sun', 'plants:none', 'animal:none',
         'decor:wooden_chair', 'character:none'
       ],
       equipped: {
-        frame: 'arch_deep', wall: 'terracotta', view: 'ocean_moon',
+        frame: 'arch_deep', wall: 'Red', view: 'Sea',
         light: 'hard_sun', plants: 'none', animal: 'none',
         decor: 'wooden_chair', character: 'none'
       }
     };
 
-    let state = Object.assign({}, defaultState, JSON.parse(localStorage.getItem('flowview_hopper_v3')) || {});
+    let state = Object.assign({}, defaultState, JSON.parse(localStorage.getItem('flowview_hopper_v4')) || {});
     state.equipped = Object.assign({}, defaultState.equipped, state.equipped || {});
 
     let currentTab = 'dailies';
@@ -861,7 +861,7 @@
     let calMonth = new Date().getMonth();
 
     function saveState() {
-      localStorage.setItem('flowview_hopper_v3', JSON.stringify(state));
+      localStorage.setItem('flowview_hopper_v4', JSON.stringify(state));
     }
 
     function haptic(pattern = 14) {
@@ -1887,7 +1887,7 @@
 
     function resetAllData() {
       if (!confirm('Alle Daten zurücksetzen?')) return;
-      localStorage.removeItem('flowview_hopper_v3');
+      localStorage.removeItem('flowview_hopper_v4');
       location.reload();
     }
 
